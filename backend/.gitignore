@@ -1,0 +1,16 @@
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Maven
+target/
+*.jar
+*.war
+*.ear
+
+# SAM build output
+.aws-sam/
+
+# OS
+.DS_Store

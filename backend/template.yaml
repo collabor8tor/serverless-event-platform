@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Todo API with Java Lambda and API Gateway
+
+Globals:
+  Function:
+    Runtime: java17
+    Timeout: 10
+    MemorySize: 512
+
+Resources:
+  TodoApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+
+  TodoApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: com.example.todo.App::handleRequest
+      CodeUri: .
+      Environment:
+        Variables:
+          TODOS_TABLE_NAME: !Ref TodosTable
+          TODO_QUEUE_URL: !Ref TodoQueue
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodosTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt TodoQueue.QueueName
+      Events:
+        CreateTodo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TodoApi
+            Path: /todos
+            Method: post
+        ListTodos:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TodoApi
+            Path: /todos
+            Method: get
+
+  TodoWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: com.example.todo.TodoWorker::handleRequest
+      CodeUri: .
+      Environment:
+        Variables:
+          TODOS_TABLE_NAME: !Ref TodosTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodosTable
+      Events:
+        TodoQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt TodoQueue.Arn
+            BatchSize: 10
+
+  TodosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-Todos"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  TodoQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-TodoQueue"
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL for /todos"
+    Value: !Sub "https://${TodoApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/todos"

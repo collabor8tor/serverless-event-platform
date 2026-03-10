@@ -1,0 +1,12 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "todo-api-java-dev"
+resolve_s3 = true
+s3_prefix = "todo-api-java-dev"
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+
+[default.global.parameters]
+region = "us-east-1"
