@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 
 //Testing changes to build
 const API_URL =
+  import.meta.env.VITE_API_URL ||
   "https://3031zw9gzh.execute-api.us-east-1.amazonaws.com/Prod/todos";
+//const API_URL =
+//  "https://3031zw9gzh.execute-api.us-east-1.amazonaws.com/Prod/todos";
 
 export default function App() {
   const [todos, setTodos] = useState([]);

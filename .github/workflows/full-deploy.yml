@@ -35,7 +35,7 @@ jobs:
 
     env:
       AWS_REGION: us-east-1
-      SAM_STACK_NAME: serverless-platform
+      SAM_STACK_NAME: serverless-platform-dev
 
     steps:
       - name: Checkout repository
