@@ -7,16 +7,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    permissions:
-      contents: read
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  backend-deploy:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.backend == 'true'
 
     env:
       AWS_REGION: us-east-1
       SAM_STACK_NAME: serverless-platform-dev
-      FRONTEND_BUCKET: ns-todo-ui-demo-2026
 
     steps:
       - name: Checkout repository
@@ -27,11 +44,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -58,6 +70,31 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --capabilities CAPABILITY_IAM
+
+  frontend-deploy:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.frontend == 'true'
+
+    env:
+      AWS_REGION: us-east-1
+      FRONTEND_BUCKET: ns-todo-ui-demo-2026
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Install frontend dependencies
         working-directory: frontend
