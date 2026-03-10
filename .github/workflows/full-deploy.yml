@@ -1,76 +1,3 @@
-name: Full Stack Deploy
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Detect changed paths
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-            frontend:
-              - 'frontend/**'
-
-  backend-deploy:
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.backend == 'true'
-
-    env:
-      AWS_REGION: us-east-1
-      SAM_STACK_NAME: serverless-platform-dev
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Install SAM CLI
-        run: pip install aws-sam-cli
-
-      - name: Build and test backend
-        working-directory: backend
-        run: |
-          mvn clean test
-          sam build
-
-      - name: Deploy backend
-        working-directory: backend
-        run: |
-          sam deploy \
-            --stack-name $SAM_STACK_NAME \
-            --region $AWS_REGION \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
-            --capabilities CAPABILITY_IAM
-
   frontend-deploy:
     runs-on: ubuntu-latest
     needs: detect-changes
@@ -79,6 +6,7 @@ jobs:
     env:
       AWS_REGION: us-east-1
       FRONTEND_BUCKET: ns-todo-ui-demo-2026
+      SAM_STACK_NAME: serverless-platform-dev
 
     steps:
       - name: Checkout repository
@@ -95,6 +23,18 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve backend API URL from CloudFormation
+        id: api-url
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name $SAM_STACK_NAME \
+            --region $AWS_REGION \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+
+          echo "Resolved API_URL=$API_URL"
+          echo "VITE_API_URL=$API_URL" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
         working-directory: frontend
