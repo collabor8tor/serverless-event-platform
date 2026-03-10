@@ -1,9 +1,9 @@
 version = 0.1
 
 [default.deploy.parameters]
-stack_name = "todo-api-java-dev"
+stack_name = "serverless-platform-dev"
 resolve_s3 = true
-s3_prefix = "todo-api-java-dev"
+s3_prefix = "serverless-platform-dev"
 capabilities = "CAPABILITY_IAM"
 disable_rollback = true
 image_repositories = []

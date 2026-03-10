@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const API_URL =
-  "https://3kd8eyx2vc.execute-api.us-east-1.amazonaws.com/Prod/todos";
+  "https://3031zw9gzh.execute-api.us-east-1.amazonaws.com/Prod/todos";
 
 export default function App() {
   const [todos, setTodos] = useState([]);
